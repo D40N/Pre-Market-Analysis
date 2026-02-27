@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPX Options — Pre-Market Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-body: #020617; --bg-panel: #0a0f1e; --bg-deep: #0f172a; --bg-deepest: #020617;
+    --border: #1e293b; --border-dim: #0f172a;
+    --text: #e2e8f0; --text-dim: #94a3b8; --text-muted: #64748b; --text-faint: #475569; --text-ghost: #334155;
+    --green: #00c896; --red: #ff4757; --yellow: #fbbf24; --blue: #60a5fa; --pink: #ff6b81; --purple: #c084fc; --rose: #f472b6;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  body { background: var(--bg-body); color: var(--text); font-family: var(--sans); padding: 24px 20px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .section { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .section-header .icon { font-size: 18px; opacity: 0.7; }
+  .section-header h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-family: var(--mono); }
+  .grid { display: grid; gap: 12px; }
+  .grid-inputs { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .grid-2 { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .flex-wrap { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 4px; font-family: var(--mono); }
+  input[type="number"], .toggle-btn {
+    background: var(--bg-deep); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 8px 12px; font-size: 13px; width: 100%;
+    font-family: var(--mono); outline: none;
+  }
+  input[type="number"]:focus { border-color: var(--blue); }
+  .toggle-btn { cursor: pointer; text-align: center; font-family: var(--mono); font-size: 13px; }
+  .toggle-btn.active { background: #7f1d1d; border-color: #dc2626; }
+
+  .metric-card {
+    background: var(--bg-deep); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; flex: 1; min-width: 120px;
+  }
+  .metric-card.large { min-width: 160px; }
+  .metric-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; font-family: var(--mono); }
+  .metric-card .value { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+  .metric-card.large .value { font-size: 24px; }
+  .metric-card .sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+  .filter-item {
+    display: flex; align-items: center; padding: 8px 12px; border-radius: 6px;
+  }
+  .filter-item.pass { background: #00c89608; border: 1px solid #00c89622; }
+  .filter-item.fail { background: #ff475712; border: 1px solid #ff475733; }
+  .status-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0;
+  }
+  .status-dot.pass { background: var(--green); box-shadow: 0 0 6px #00c89688; }
+  .status-dot.fail { background: var(--red); box-shadow: 0 0 6px #ff475788; }
+  .filter-name { font-size: 12px; font-weight: 600; }
+  .filter-reason { font-size: 10px; color: var(--text-muted); }
+
+  .code-block {
+    background: var(--bg-deepest); border-radius: 8px; padding: 16px;
+    border: 1px solid var(--border); font-family: var(--mono); font-size: 13px; line-height: 1.8;
+  }
+  .code-block.sm { font-size: 12px; }
+
+  .greek-pill {
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--bg-deep); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; min-width: 80px;
+  }
+  .greek-pill .name { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; font-family: var(--mono); }
+  .greek-pill .val { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  th { padding: 8px 12px; text-align: right; color: var(--text-muted); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 6px 12px; text-align: right; border-bottom: 1px solid var(--bg-body); }
+
+  .pnl-chart { position: relative; height: 160px; display: flex; align-items: flex-end; gap: 2px; padding: 0 8px; }
+  .pnl-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; position: relative; }
+  .pnl-bar-half { width: 100%; display: flex; flex-direction: column; height: 50%; }
+  .pnl-bar { border-radius: 4px; min-height: 2px; transition: height 0.3s ease; }
+  .pnl-bar.profit { border-radius: 4px 4px 0 0; background: linear-gradient(to top, #00c89688, #00c896); }
+  .pnl-bar.loss { border-radius: 0 0 4px 4px; background: linear-gradient(to bottom, #ff475788, #ff4757); }
+  .pnl-zero { width: 100%; height: 1px; background: var(--text-ghost); position: absolute; top: 50%; }
+  .pnl-label { position: absolute; bottom: -18px; font-size: 9px; color: var(--text-faint); font-family: var(--mono); }
+
+  .no-trade { background: var(--bg-panel); border: 2px solid #ff475744; border-radius: 12px; padding: 32px; margin-bottom: 20px; text-align: center; }
+  .verdict-box { border-radius: 10px; padding: 10px 20px; text-align: center; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--border); }
+
+  .ref-card { padding: 14px 16px; margin-bottom: 10px; background: var(--bg-deepest); border: 1px solid var(--border); border-radius: 8px; }
+  .ref-card .ref-name { font-size: 13px; font-weight: 700; color: var(--yellow); font-family: var(--mono); margin-bottom: 6px; }
+  .ref-label { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .schedule-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-family: var(--mono); font-size: 12px; }
+  .disclaimer { text-align: center; padding: 16px 0; font-size: 10px; color: var(--text-ghost); border-top: 1px solid var(--bg-body); font-family: var(--mono); }
+  .leg-box { background: var(--bg-deepest); padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-family: var(--mono); font-size: 11px; }
+  .cost-grid { background: var(--bg-deepest); border-radius: 8px; padding: 12px; border: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-family: var(--mono); font-size: 12px; }
+
+  @media (max-width: 640px) {
+    .header { flex-direction: column; gap: 12px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .flex-wrap { flex-direction: column; }
+    .cost-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+// ─── Black-Scholes & Greeks Engine ───────────────────────────────────────────
+function normalCDF(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign=x<0?-1:1, t=1/(1+p*Math.abs(x));
+  const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x/2);
+  return 0.5*(1+sign*y);
+}
+function normalPDF(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI)}
+
+function bsPrice(S,K,T,r,sigma,type="put"){
+  if(T<=0)return Math.max(type==="call"?S-K:K-S,0);
+  const d1=(Math.log(S/K)+(r+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));
+  const d2=d1-sigma*Math.sqrt(T);
+  if(type==="call")return S*normalCDF(d1)-K*Math.exp(-r*T)*normalCDF(d2);
+  return K*Math.exp(-r*T)*normalCDF(-d2)-S*normalCDF(-d1);
+}
+
+function bsGreeks(S,K,T,r,sigma,type="put"){
+  if(T<=0.0001)T=0.0001;
+  const sqrtT=Math.sqrt(T),d1=(Math.log(S/K)+(r+0.5*sigma*sigma)*T)/(sigma*sqrtT);
+  const d2=d1-sigma*sqrtT, pdf=normalPDF(d1), disc=Math.exp(-r*T);
+  let delta,theta,rho;
+  if(type==="call"){delta=normalCDF(d1);theta=(-S*pdf*sigma/(2*sqrtT))-r*K*disc*normalCDF(d2);rho=K*T*disc*normalCDF(d2)}
+  else{delta=normalCDF(d1)-1;theta=(-S*pdf*sigma/(2*sqrtT))+r*K*disc*normalCDF(-d2);rho=-K*T*disc*normalCDF(-d2)}
+  return{delta:+delta.toFixed(4),gamma:+(pdf/(S*sigma*sqrtT)).toFixed(6),theta:+(theta/365).toFixed(4),vega:+(S*pdf*sqrtT/100).toFixed(4),rho:+(rho/100).toFixed(4)};
+}
+
+// ─── Blackout / Half Days ────────────────────────────────────────────────────
+const BLACKOUT=["2026-01-14","2026-01-29","2026-02-07","2026-02-12","2026-03-06","2026-03-11","2026-03-18","2026-04-03","2026-04-10","2026-04-29","2026-05-01","2026-05-08","2026-05-13","2026-06-05","2026-06-10","2026-06-17","2026-07-02","2026-07-10","2026-07-29","2026-08-07","2026-08-12","2026-09-04","2026-09-10","2026-09-16","2026-10-02","2026-10-13","2026-10-28","2026-11-06","2026-11-13","2026-11-25","2026-12-04","2026-12-11","2026-12-16","2026-12-24"];
+const HALF_DAYS=["2026-11-27","2026-12-24"];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+const state = {
+  spxPrice:5920, prevClose:5911, vix:18.5, vix3m:20.2, riskFreeRate:4.5,
+  overnightGap:0.15, accountEquity:100000, riskPct:1.0, targetDelta:0.10,
+  spreadWidth:5, peakEquity:105000, weeklyLoss:0.5, monthlyLoss:1.2,
+  consecutiveLosses:0, hasOpenPosition:false
+};
+
+function setState(key,val){ state[key]=val; render(); }
+
+// ─── Simulated Price History ─────────────────────────────────────────────────
+let fakePrices = [];
+function genPrices(){
+  fakePrices=[5500];
+  for(let i=1;i<252;i++) fakePrices.push(fakePrices[i-1]*(1+(Math.random()-0.48)*0.012));
+  fakePrices[fakePrices.length-1]=state.spxPrice;
+}
+genPrices();
+
+function realizedVol(prices,w=10){
+  if(prices.length<w+1)return 0;
+  const rets=[];for(let i=prices.length-w;i<prices.length;i++)rets.push(Math.log(prices[i]/prices[i-1]));
+  const m=rets.reduce((a,b)=>a+b,0)/rets.length;
+  const v=rets.reduce((a,r)=>a+(r-m)**2,0)/(rets.length-1);
+  return Math.sqrt(v*252)*100;
+}
+
+function classifyRegime(prices,vix){
+  if(!prices||prices.length<200)return"UNKNOWN";
+  const s50=prices.slice(-50).reduce((a,b)=>a+b,0)/50;
+  const s200=prices.slice(-200).reduce((a,b)=>a+b,0)/200;
+  const cur=prices[prices.length-1],old=prices[Math.max(0,prices.length-63)];
+  const ret3m=(cur-old)/old;
+  if(vix>25)return"HIGH_VOL";
+  if(s50>s200*0.998&&cur>s200&&ret3m>0.03)return"BULL";
+  if(s50<s200*1.002&&cur<s200&&ret3m<-0.03)return"BEAR";
+  return"SIDEWAYS";
+}
+
+// ─── Option Chain ────────────────────────────────────────────────────────────
+function genChain(S,vix,r,T){
+  const sigma=vix/100, chain=[];
+  const lo=Math.floor(S*0.95/5)*5, hi=Math.ceil(S*1.05/5)*5;
+  for(let K=lo;K<=hi;K+=5){
+    const pp=bsPrice(S,K,T,r,sigma,"put"),cp=bsPrice(S,K,T,r,sigma,"call");
+    const pg=bsGreeks(S,K,T,r,sigma,"put"),cg=bsGreeks(S,K,T,r,sigma,"call");
+    const sw=Math.max(0.05,pp*0.08+0.05);
+    chain.push({strike:K,putMid:+pp.toFixed(2),putBid:+Math.max(0.05,pp-sw/2).toFixed(2),putAsk:+(pp+sw/2).toFixed(2),callMid:+cp.toFixed(2),callBid:+Math.max(0.05,cp-sw/2).toFixed(2),callAsk:+(cp+sw/2).toFixed(2),putGreeks:pg,callGreeks:cg,putIV:+(sigma*100*(1+(Math.abs(S-K)/S)*0.3)).toFixed(1),callIV:+(sigma*100*(1+(Math.abs(S-K)/S)*0.25)).toFixed(1)});
+  }
+  return chain;
+}
+
+// ─── Trade Constructor ───────────────────────────────────────────────────────
+function constructTrade(chain,S,vix,equity,riskPct,sw,td,dir){
+  const cands=chain.filter(c=>{const d=dir==="put"?Math.abs(c.putGreeks.delta):Math.abs(c.callGreeks.delta);return d>=td-0.04&&d<=td+0.04;});
+  if(!cands.length)return null;
+  cands.sort((a,b)=>{const dA=Math.abs((dir==="put"?Math.abs(a.putGreeks.delta):Math.abs(a.callGreeks.delta))-td);const dB=Math.abs((dir==="put"?Math.abs(b.putGreeks.delta):Math.abs(b.callGreeks.delta))-td);return dA-dB;});
+  const sl=cands[0], ls=dir==="put"?sl.strike-sw:sl.strike+sw;
+  const ll=chain.find(c=>c.strike===ls); if(!ll)return null;
+  const sp=dir==="put"?sl.putBid:sl.callBid, lp=dir==="put"?ll.putAsk:ll.callAsk;
+  const cm=dir==="put"?sl.putMid-ll.putMid:sl.callMid-ll.callMid;
+  const cr=+(sp-lp).toFixed(2), cmid=+cm.toFixed(2);
+  const slip=0.10, comm=(0.65*4)/100;
+  const ec=+(cr-slip-comm).toFixed(2);
+  const mlps=sw-cr, mlpc=mlps*100;
+  let va=1;if(vix>=18&&vix<22)va=0.75;else if(vix>=22&&vix<=30)va=0.5;
+  const ar=riskPct*va, mrd=equity*(ar/100), nc=Math.max(1,Math.floor(mrd/mlpc));
+  const sg=dir==="put"?sl.putGreeks:sl.callGreeks, lg=dir==="put"?ll.putGreeks:ll.callGreeks;
+  return{direction:dir,shortStrike:sl.strike,longStrike:ll.strike,
+    shortDelta:sg.delta,longDelta:lg.delta,creditMid:cmid,creditReceived:cr,effectiveCredit:ec,
+    slippage:slip,commission:comm,maxLossPerSpread:mlps,maxLossPerContract:mlpc,
+    numContracts:nc,totalCredit:ec*nc*100,totalMaxLoss:mlpc*nc,
+    profitTarget80:+(cr*0.20).toFixed(2),stopLoss2x:+(cr*3).toFixed(2),
+    spreadGreeks:{
+      delta:+((sg.delta-lg.delta)*nc).toFixed(4),gamma:+((sg.gamma-lg.gamma)*nc).toFixed(6),
+      theta:+((sg.theta-lg.theta)*nc*-1).toFixed(4),vega:+((sg.vega-lg.vega)*nc).toFixed(4),
+      rho:+((sg.rho-lg.rho)*nc).toFixed(4)
+    },
+    shortIV:dir==="put"?sl.putIV:sl.callIV, longIV:dir==="put"?ll.putIV:ll.callIV,
+    shortLeg:sl,longLeg:ll,volAdjust:va,adjustedRisk:ar,
+    breakeven:dir==="put"?+(sl.strike-cr).toFixed(2):+(sl.strike+cr).toFixed(2),
+    probProfit:+((1-Math.abs(sg.delta))*100).toFixed(1)
+  };
+}
+
+// ─── Filters ─────────────────────────────────────────────────────────────────
+function evalFilters(vix,vix3m,rv,gap,dateStr,baw,hasOpen){
+  const f=[];let ok=true;
+  const add=(n,p,r)=>{f.push({name:n,pass:p,reason:r});if(!p)ok=false;};
+  add("VIX High",vix<=30,vix>30?`VIX at ${vix.toFixed(1)} — crisis level`:`VIX at ${vix.toFixed(1)} — below crisis`);
+  add("VIX Low",vix>=13,vix<13?`VIX at ${vix.toFixed(1)} — premium too cheap`:`VIX at ${vix.toFixed(1)} — sufficient premium`);
+  const tr=vix/vix3m;
+  add("Term Structure",tr<=1.05,tr>1.05?`VIX/VIX3M = ${tr.toFixed(3)} — backwardation`:`VIX/VIX3M = ${tr.toFixed(3)} — contango`);
+  const ivr=vix/rv;
+  add("IV vs RV",ivr>=0.9,ivr<0.9?`IV/RV = ${ivr.toFixed(2)} — risk underpriced`:`IV/RV = ${ivr.toFixed(2)} — IV rich enough`);
+  add("Overnight Gap",Math.abs(gap)<=1.0,Math.abs(gap)>1.0?`Gap ${gap.toFixed(2)}% — dislocated`:`Gap ${gap.toFixed(2)}% — normal`);
+  add("Blackout Date",!BLACKOUT.includes(dateStr),BLACKOUT.includes(dateStr)?"FOMC/CPI/NFP day":"No events");
+  add("Half Day",!HALF_DAYS.includes(dateStr),HALF_DAYS.includes(dateStr)?"Half session — thin liquidity":"Full day");
+  add("Open Position",!hasOpen,hasOpen?"Position still open":"No open positions");
+  add("Bid-Ask Width",baw<=0.30,baw>0.30?`Bid-ask $${baw.toFixed(2)} — too wide`:`Bid-ask $${baw.toFixed(2)} — OK`);
+  return{filters:f,allPass:ok};
+}
+
+function evalPortfolio(){
+  const c=[];let ok=true;
+  const dd=((state.peakEquity-state.accountEquity)/state.peakEquity)*100;
+  const add=(n,p,r)=>{c.push({name:n,pass:p,reason:r});if(!p)ok=false;};
+  add("Weekly Loss",state.weeklyLoss<3,state.weeklyLoss>=3?`${state.weeklyLoss.toFixed(1)}% ≥ 3%`:`${state.weeklyLoss.toFixed(1)}% — OK`);
+  add("Monthly Loss",state.monthlyLoss<6,state.monthlyLoss>=6?`${state.monthlyLoss.toFixed(1)}% ≥ 6%`:`${state.monthlyLoss.toFixed(1)}% — OK`);
+  add("DD < 5%",dd<5,dd>=5?`DD ${dd.toFixed(1)}% — half size`:`DD ${dd.toFixed(1)}% — OK`);
+  add("DD < 10%",dd<10,dd>=10?`DD ${dd.toFixed(1)}% — STOP`:`DD ${dd.toFixed(1)}% — OK`);
+  add("Consec. Losses",state.consecutiveLosses<5,state.consecutiveLosses>=5?`${state.consecutiveLosses} — pause 2 days`:`${state.consecutiveLosses} — OK`);
+  return{checks:c,allPass:ok};
+}
+
+// ─── P&L Scenarios ───────────────────────────────────────────────────────────
+function pnlScenarios(t){
+  if(!t)return[];
+  const{shortStrike:ss,longStrike:ls,creditReceived:cr,numContracts:nc,direction:dir}=t;
+  const w=Math.abs(ss-ls), pts=dir==="put"
+    ?[ls-10,ls,ls+w*0.25,ls+w*0.5,ss-1,ss,ss+5,ss+20,ss+50]
+    :[ss-50,ss-20,ss-5,ss,ss+1,ss+w*0.5,ss+w*0.75,ss+w,ss+w+10];
+  return pts.map(p=>{
+    let pnl;
+    if(dir==="put"){pnl=p>=ss?cr:p<=ls?cr-w:cr-(ss-p)}
+    else{pnl=p<=ss?cr:p>=ss+w?cr-w:cr-(p-ss)}
+    const tot=pnl*nc*100;
+    return{spxPrice:p,pnlPerSpread:+pnl.toFixed(2),totalPnl:+tot.toFixed(0),result:tot>=0?"PROFIT":"LOSS"};
+  }).sort((a,b)=>a.spxPrice-b.spxPrice);
+}
+
+// ─── Render Helpers ──────────────────────────────────────────────────────────
+function h(tag,attrs,...children){
+  const el=document.createElement(tag);
+  if(attrs)Object.entries(attrs).forEach(([k,v])=>{
+    if(k==="style"&&typeof v==="object")Object.assign(el.style,v);
+    else if(k.startsWith("on"))el.addEventListener(k.slice(2).toLowerCase(),v);
+    else el.setAttribute(k,v);
+  });
+  children.flat().forEach(c=>{
+    if(c==null)return;
+    el.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(c):c);
+  });
+  return el;
+}
+
+function metricCard(label,value,color,sub,large){
+  const d=h("div",{class:"metric-card"+(large?" large":"")},
+    h("div",{class:"label"},label),
+    h("div",{class:"value",style:{color}},value)
+  );
+  if(sub)d.appendChild(h("div",{class:"sub"},sub));
+  return d;
+}
+
+function filterRow(f){
+  return h("div",{class:"filter-item "+(f.pass?"pass":"fail")},
+    h("span",{class:"status-dot "+(f.pass?"pass":"fail")}),
+    h("div",null,
+      h("div",{class:"filter-name",style:{color:f.pass?"var(--green)":"var(--red)"}},f.name),
+      h("div",{class:"filter-reason"},f.reason)
+    )
+  );
+}
+
+function sectionHeader(icon,text){
+  return h("div",{class:"section-header"},h("span",{class:"icon"},icon),h("h2",null,text));
+}
+
+function greekPill(name,value,color){
+  return h("div",{class:"greek-pill"},h("span",{class:"name"},name),h("span",{class:"val",style:{color}},value));
+}
+
+// ─── Input Reference Data ────────────────────────────────────────────────────
+const REF_DATA = [
+  {name:"SPX Price",what:"The current or pre-market indicative price of the S&P 500 index.",where:'Check /ES (E-mini S&P 500 futures) on your broker before 6:30 AM PST. Yahoo Finance: "^GSPC" or "/ES=F".',how:"Enter as-is, e.g. 5920. Round to nearest whole number."},
+  {name:"Prev Close",what:"Yesterday's official SPX closing price.",where:'Google "SPX close", Yahoo Finance (^GSPC), or your broker chart.',how:"Enter exact closing price, e.g. 5911. Used to calculate overnight gap %."},
+  {name:"VIX",what:'CBOE Volatility Index — the market\'s 30-day forward vol expectation ("fear gauge").',where:'Google "VIX", ^VIX on Yahoo Finance, or your broker. Pre-market use prior day close.',how:"Enter as number, e.g. 18.5. NOT as decimal (0.185)."},
+  {name:"VIX3M",what:"CBOE 3-Month Volatility Index — 93-day expected volatility.",where:"^VIX3M on Yahoo Finance or cboe.com. Usually 5-15% higher than VIX in normal markets.",how:"Enter as number, e.g. 20.2. Ratio > 1.05 blocks trading."},
+  {name:"Risk-Free Rate %",what:"Annualized risk-free rate for Black-Scholes pricing.",where:'Google "3 month treasury yield", ^IRX on Yahoo Finance, or treasury.gov.',how:"Enter as %, e.g. 4.5. Update weekly — minor effect on short-dated options."},
+  {name:"Overnight Gap %",what:"SPX move from yesterday's close to pre-market indicative price.",where:"Calculate: (SPX Price − Prev Close) / Prev Close × 100. Or check /ES % change.",how:"Signed number. +0.15 = gap up. −1.03 = gap down. Abs > 1.0% blocks trading."},
+  {name:"Account $",what:"Total trading account equity in USD.",where:'Broker account page: "Net Liquidation Value" (IBKR) or "Account Value" (ThinkorSwim).',how:"Whole number, e.g. 100000. Update daily."},
+  {name:"Risk % / Trade",what:"Max % of equity willing to risk per trade.",where:"YOUR decision. Blueprint recommends 1.0%.",how:"Enter %, e.g. 1.0. Auto-adjusts down by VIX level."},
+  {name:"Target Δ (Delta)",what:"Absolute delta for short strike. ≈ probability of expiring ITM.",where:"Strategy parameter. Recommended: 0.10 (10 delta ≈ 90% OTM probability).",how:"Decimal, e.g. 0.10. Range: 0.06 (conservative) to 0.15 (moderate)."},
+  {name:"Spread Width",what:"Distance in points between short and long strikes.",where:"Strategy parameter. SPX strikes in $5 increments.",how:"Whole number: 5, 10, or 15. Wider = more credit but higher max loss. Start with 5."},
+  {name:"Peak Equity",what:'Highest account equity since strategy start ("high-water mark").',where:"Track in spreadsheet. Started $100K, rose to $105K, now $102K → peak is $105K.",how:"Whole number, e.g. 105000. DD > 5% = half size. DD > 10% = stop."},
+  {name:"Weekly Loss %",what:"Cumulative % loss this trading week.",where:"(Start of week value − Current) / Start of week × 100. Enter 0 if flat/profitable.",how:"Positive number, e.g. 0.5. Circuit breaker at 3.0%."},
+  {name:"Monthly Loss %",what:"Cumulative % loss this calendar month.",where:"(1st of month value − Current) / 1st of month × 100. Enter 0 if flat/profitable.",how:"Positive number, e.g. 1.2. Circuit breaker at 6.0%."},
+  {name:"Consecutive Losses",what:"Losing trades in a row without a winner.",where:"Trade journal. Winner or scratch resets to 0.",how:"Whole number. After 5, dashboard blocks trading for 2 days."},
+  {name:"Open Position?",what:"Whether you have an unexpired spread on the books.",where:"Broker Positions tab.",how:"Toggle YES/NO. YES blocks new trades."}
+];
+
+// ─── Main Render ─────────────────────────────────────────────────────────────
+function render(){
+  const app=document.getElementById("app");
+  app.innerHTML="";
+
+  const dateStr=new Date().toISOString().split("T")[0];
+  const T=1/365, r=state.riskFreeRate/100;
+  const sma20=fakePrices.slice(-20).reduce((a,b)=>a+b,0)/20;
+  const rv=realizedVol(fakePrices,10);
+  const regime=classifyRegime(fakePrices,state.vix);
+  const dir=regime==="BEAR"?"call":"put";
+  const chain=genChain(state.spxPrice,state.vix,r,T);
+  const cand=chain.find(c=>{const d=dir==="put"?Math.abs(c.putGreeks.delta):Math.abs(c.callGreeks.delta);return d>=state.targetDelta-0.04&&d<=state.targetDelta+0.04;});
+  const baw=cand?(dir==="put"?cand.putAsk-cand.putBid:cand.callAsk-cand.callBid):0.15;
+  const fr=evalFilters(state.vix,state.vix3m,rv,state.overnightGap,dateStr,baw,state.hasOpenPosition);
+  const pr=evalPortfolio();
+  const canTrade=fr.allPass&&pr.allPass;
+  const trade=canTrade?constructTrade(chain,state.spxPrice,state.vix,state.accountEquity,state.riskPct,state.spreadWidth,state.targetDelta,dir):null;
+  const verdictColor=canTrade?(trade&&trade.effectiveCredit>=0.50?"var(--green)":"var(--yellow)"):"var(--red)";
+  const verdictText=canTrade?(trade&&trade.effectiveCredit>=0.50?"TRADE":"SKIP — Credit thin"):"NO TRADE";
+  const scenarios=pnlScenarios(trade);
+
+  // ─── Header ────
+  app.appendChild(h("div",{class:"header"},
+    h("div",null,
+      h("h1",{style:{fontSize:"22px",fontWeight:700,fontFamily:"var(--mono)",color:"#f8fafc",letterSpacing:"-0.02em"}},"SPX OPTIONS — PRE-MARKET ANALYSIS"),
+      h("div",{style:{fontSize:"12px",color:"var(--text-faint)",marginTop:"4px",fontFamily:"var(--mono)"}},dateStr+" • Daily Credit Spread • 1-DTE • All times PST")
+    ),
+    h("div",{class:"verdict-box",style:{background:verdictColor+"18",border:"2px solid "+verdictColor}},
+      h("div",{style:{fontSize:"10px",color:"var(--text-muted)",letterSpacing:"0.1em",fontFamily:"var(--mono)"}},"VERDICT"),
+      h("div",{style:{fontSize:"18px",fontWeight:800,color:verdictColor,fontFamily:"var(--mono)"}},verdictText)
+    )
+  ));
+
+  // ─── Inputs ────
+  const inputSection=h("div",{class:"section"});
+  inputSection.appendChild(sectionHeader("⚙","Market Inputs"));
+  const ig=h("div",{class:"grid grid-inputs"});
+  const fields=[
+    {label:"SPX Price",key:"spxPrice",step:1},{label:"Prev Close",key:"prevClose",step:1},
+    {label:"VIX",key:"vix",step:0.1},{label:"VIX3M",key:"vix3m",step:0.1},
+    {label:"Risk-Free %",key:"riskFreeRate",step:0.1},{label:"O/N Gap %",key:"overnightGap",step:0.01},
+    {label:"Account $",key:"accountEquity",step:1000},{label:"Risk %/Trade",key:"riskPct",step:0.1},
+    {label:"Target Δ",key:"targetDelta",step:0.01},{label:"Spread Width",key:"spreadWidth",step:5},
+    {label:"Peak Equity",key:"peakEquity",step:1000},{label:"Weekly Loss %",key:"weeklyLoss",step:0.1},
+    {label:"Monthly Loss %",key:"monthlyLoss",step:0.1},{label:"Consec. Losses",key:"consecutiveLosses",step:1},
+  ];
+  fields.forEach(f=>{
+    const inp=h("input",{type:"number",step:f.step,value:state[f.key]});
+    inp.addEventListener("change",e=>{setState(f.key,+e.target.value);});
+    ig.appendChild(h("div",null,h("label",null,f.label),inp));
+  });
+  const togBtn=h("button",{class:"toggle-btn"+(state.hasOpenPosition?" active":"")},state.hasOpenPosition?"YES":"NO");
+  togBtn.addEventListener("click",()=>setState("hasOpenPosition",!state.hasOpenPosition));
+  ig.appendChild(h("div",null,h("label",null,"Open Position?"),togBtn));
+  inputSection.appendChild(ig);
+  app.appendChild(inputSection);
+
+  // ─── Regime & Vol ────
+  const regColor=regime==="BULL"?"var(--green)":regime==="BEAR"?"var(--red)":regime==="HIGH_VOL"?"var(--yellow)":"var(--blue)";
+  const termR=state.vix/state.vix3m, ivrvR=state.vix/rv;
+  const mw=h("div",{class:"flex-wrap"});
+  mw.appendChild(metricCard("Regime",regime,regColor,null,true));
+  mw.appendChild(metricCard("Direction",dir==="put"?"BULL PUT":"BEAR CALL",dir==="put"?"var(--green)":"var(--pink)",null,true));
+  mw.appendChild(metricCard("VIX / VIX3M",termR.toFixed(3),termR>1.05?"var(--red)":"var(--green)",termR>1?"Backwardation":"Contango"));
+  mw.appendChild(metricCard("10d RV",rv.toFixed(1)+"%","var(--blue)"));
+  mw.appendChild(metricCard("IV/RV",ivrvR.toFixed(2),ivrvR<0.9?"var(--red)":"var(--green)",ivrvR>=1.2?"IV rich ✓":ivrvR<0.9?"IV cheap ✗":"Fair"));
+  mw.appendChild(metricCard("SPX vs SMA20",state.spxPrice>sma20?"ABOVE":"BELOW",state.spxPrice>sma20?"var(--green)":"var(--pink)","SMA20: "+sma20.toFixed(0)));
+  app.appendChild(mw);
+
+  // ─── Filters ────
+  const fs=h("div",{class:"section"});
+  fs.appendChild(sectionHeader("🛡","Pre-Trade Filters"));
+  const fg=h("div",{class:"grid grid-2"});
+  fr.filters.forEach(f=>fg.appendChild(filterRow(f)));
+  fs.appendChild(fg);
+  app.appendChild(fs);
+
+  // ─── Portfolio Risk ────
+  const ps=h("div",{class:"section"});
+  ps.appendChild(sectionHeader("📊","Portfolio Risk Limits"));
+  const pg=h("div",{class:"grid grid-2"});
+  pr.checks.forEach(c=>pg.appendChild(filterRow(c)));
+  ps.appendChild(pg);
+  app.appendChild(ps);
+
+  // ─── Trade / No Trade ────
+  if(trade&&trade.effectiveCredit>=0.50){
+    // Trade instructions
+    const ts=h("div",{class:"section"});
+    ts.appendChild(sectionHeader("📋","Trade Instructions"));
+    const sg=dir==="put"?trade.shortLeg.putGreeks:trade.shortLeg.callGreeks;
+    const lg2=dir==="put"?trade.longLeg.putGreeks:trade.longLeg.callGreeks;
+    const cb=h("div",{class:"code-block"});
+    cb.innerHTML=`<div style="color:var(--yellow);font-weight:700;margin-bottom:8px">SELL ${dir==="put"?"PUT":"CALL"} CREDIT SPREAD — 1 DTE</div>`+
+      `<div><span style="color:var(--text-muted)">SELL</span> <span style="color:var(--pink)">${trade.numContracts}x SPX ${trade.shortStrike} ${dir.toUpperCase()}</span> <span style="color:var(--text-muted)">@ $${dir==="put"?trade.shortLeg.putBid:trade.shortLeg.callBid} bid</span></div>`+
+      `<div><span style="color:var(--text-muted)">BUY </span> <span style="color:var(--blue)">${trade.numContracts}x SPX ${trade.longStrike} ${dir.toUpperCase()}</span> <span style="color:var(--text-muted)">@ $${dir==="put"?trade.longLeg.putAsk:trade.longLeg.callAsk} ask</span></div>`+
+      `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px"><span style="color:var(--text-muted)">Net credit (mid): </span><span style="color:var(--green)">$${trade.creditMid}</span> <span style="color:var(--text-muted)">• Est fill: </span><span style="color:var(--green)">$${trade.creditReceived}</span> <span style="color:var(--text-muted)">• After costs: </span><span style="color:${trade.effectiveCredit>0?"var(--green)":"var(--red)"}">$${trade.effectiveCredit}</span></div>`+
+      `<div style="margin-top:4px"><span style="color:var(--text-muted)">Breakeven: </span><span style="color:var(--yellow)">${trade.breakeven}</span> <span style="color:var(--text-muted)">• Prob. Profit: </span><span style="color:var(--green)">${trade.probProfit}%</span></div>`;
+    ts.appendChild(cb);
+
+    const km=h("div",{class:"flex-wrap",style:{marginTop:"16px"}});
+    km.appendChild(metricCard("Total Credit","$"+trade.totalCredit.toFixed(0),"var(--green)"));
+    km.appendChild(metricCard("Max Loss","-$"+trade.totalMaxLoss.toFixed(0),"var(--red)"));
+    km.appendChild(metricCard("Contracts",trade.numContracts,"var(--yellow)"));
+    km.appendChild(metricCard("Vol Adj",(trade.volAdjust*100).toFixed(0)+"%",trade.volAdjust<1?"var(--yellow)":"var(--green)","Risk: "+trade.adjustedRisk.toFixed(2)+"%"));
+    km.appendChild(metricCard("Risk/Reward",(trade.totalMaxLoss/trade.totalCredit).toFixed(1)+":1","var(--blue)"));
+    ts.appendChild(km);
+
+    const cg=h("div",{class:"cost-grid"});
+    cg.innerHTML=`<div><span style="color:var(--text-muted)">Slippage:</span> <span style="color:var(--yellow)">$${trade.slippage.toFixed(2)}/spr</span></div>`+
+      `<div><span style="color:var(--text-muted)">Commission:</span> <span style="color:var(--yellow)">$${trade.commission.toFixed(2)}/spr</span></div>`+
+      `<div><span style="color:var(--text-muted)">Total friction:</span> <span style="color:var(--pink)">$${(trade.slippage+trade.commission).toFixed(2)}/spr</span></div>`;
+    ts.appendChild(cg);
+
+    const ex=h("div",{class:"code-block sm",style:{marginTop:"16px"}});
+    ex.innerHTML=`<div style="color:var(--text-dim);font-weight:700;margin-bottom:4px">EXIT RULES</div>`+
+      `<div><span style="color:var(--green)">✓ PROFIT TARGET:</span> Close if spread ≤ <span style="color:var(--yellow)">$${trade.profitTarget80}</span> (80% decay)</div>`+
+      `<div><span style="color:var(--red)">✗ STOP LOSS:</span> Close if spread ≥ <span style="color:var(--yellow)">$${trade.stopLoss2x}</span> (2× credit)</div>`+
+      `<div><span style="color:var(--blue)">⏰ TIME EXIT:</span> Close if SPX within 0.3% of ${trade.shortStrike} after 12:30 PM PST (3:30 PM ET)</div>`+
+      `<div><span style="color:var(--text-dim)">⌛ EXPIRATION:</span> Let expire if none triggered</div>`;
+    ts.appendChild(ex);
+    app.appendChild(ts);
+
+    // Greeks
+    const gs=h("div",{class:"section"});
+    gs.appendChild(sectionHeader("Σ",`Position Greeks (${trade.numContracts} contracts)`));
+    const gw=h("div",{style:"display:flex;gap:10px;flex-wrap:wrap;justify-content:center"});
+    gw.appendChild(greekPill("Delta",trade.spreadGreeks.delta.toFixed(2),"var(--blue)"));
+    gw.appendChild(greekPill("Gamma",trade.spreadGreeks.gamma.toFixed(4),"var(--purple)"));
+    gw.appendChild(greekPill("Theta","+"+trade.spreadGreeks.theta.toFixed(2),"var(--green)"));
+    gw.appendChild(greekPill("Vega",trade.spreadGreeks.vega.toFixed(2),"var(--yellow)"));
+    gw.appendChild(greekPill("Rho",trade.spreadGreeks.rho.toFixed(4),"var(--rose)"));
+    gs.appendChild(gw);
+    const legGrid=h("div",{style:"display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"});
+    const makeLeg=(label,g,iv)=>{const d=h("div",{class:"leg-box"});d.innerHTML=`<div style="color:var(--text-muted);margin-bottom:4px">${label}</div><div>Δ ${g.delta} · Γ ${g.gamma} · Θ ${g.theta}</div><div>V ${g.vega} · ρ ${g.rho} · IV ${iv}%</div>`;return d;};
+    legGrid.appendChild(makeLeg(`SHORT — ${trade.shortStrike} ${dir.toUpperCase()}`,sg,trade.shortIV));
+    legGrid.appendChild(makeLeg(`LONG — ${trade.longStrike} ${dir.toUpperCase()}`,lg2,trade.longIV));
+    gs.appendChild(legGrid);
+    app.appendChild(gs);
+
+    // P&L Table
+    const pls=h("div",{class:"section"});
+    pls.appendChild(sectionHeader("💰","P&L at Expiration"));
+    const tbl=h("table");
+    const thead=h("thead"); const tr0=h("tr");
+    ["SPX at Exp","P&L / Spread",`Total P&L (${trade.numContracts}x)`,"Result"].forEach(hd=>tr0.appendChild(h("th",null,hd)));
+    thead.appendChild(tr0); tbl.appendChild(thead);
+    const tbody=h("tbody");
+    scenarios.forEach(s=>{
+      const isSh=s.spxPrice===trade.shortStrike;
+      const c=s.result==="PROFIT"?"var(--green)":"var(--red)";
+      const row=h("tr",{style:{background:isSh?"#fbbf2410":"transparent"}});
+      const td1=h("td",{style:{color:isSh?"var(--yellow)":"var(--text-dim)"}},s.spxPrice.toFixed(0));
+      if(isSh)td1.appendChild(h("span",{style:{fontSize:"9px",marginLeft:"4px",color:"var(--yellow)"}},"SHORT"));
+      row.appendChild(td1);
+      row.appendChild(h("td",{style:{color:c}},"$"+s.pnlPerSpread.toFixed(2)));
+      row.appendChild(h("td",{style:{color:c,fontWeight:700}},(s.totalPnl>=0?"+":"")+"$"+s.totalPnl.toLocaleString()));
+      row.appendChild(h("td",{style:{color:c,fontSize:"10px",fontWeight:600}},s.result));
+      tbody.appendChild(row);
+    });
+    tbl.appendChild(tbody);
+    pls.appendChild(h("div",{style:"overflow-x:auto"},tbl));
+    app.appendChild(pls);
+
+    // P&L Chart
+    const pcs=h("div",{class:"section"});
+    pcs.appendChild(sectionHeader("📈","P&L Profile"));
+    const maxAbs=Math.max(...scenarios.map(x=>Math.abs(x.totalPnl)),1);
+    const chart=h("div",{class:"pnl-chart"});
+    scenarios.forEach(s=>{
+      const pct=Math.abs(s.totalPnl)/maxAbs;
+      const col=h("div",{class:"pnl-bar-col"});
+      if(s.totalPnl>=0){
+        const top=h("div",{class:"pnl-bar-half",style:{justifyContent:"flex-end"}});
+        top.appendChild(h("div",{class:"pnl-bar profit",style:{height:pct*100+"%"}}));
+        col.appendChild(top);
+      }else{col.appendChild(h("div",{class:"pnl-bar-half"}));}
+      col.appendChild(h("div",{class:"pnl-zero"}));
+      if(s.totalPnl<0){
+        const bot=h("div",{class:"pnl-bar-half",style:{justifyContent:"flex-start"}});
+        bot.appendChild(h("div",{class:"pnl-bar loss",style:{height:pct*100+"%"}}));
+        col.appendChild(bot);
+      }else{col.appendChild(h("div",{class:"pnl-bar-half"}));}
+      col.appendChild(h("div",{class:"pnl-label"},s.spxPrice.toFixed(0)));
+      chart.appendChild(col);
+    });
+    pcs.appendChild(chart);
+    pcs.appendChild(h("div",{style:"text-align:center;margin-top:24px;font-size:10px;color:var(--text-faint);font-family:var(--mono)"},"SPX Price at Expiration"));
+    app.appendChild(pcs);
+
+  } else {
+    const nt=h("div",{class:"no-trade"});
+    nt.appendChild(h("div",{style:{fontSize:"48px",marginBottom:"12px"}},"🚫"));
+    nt.appendChild(h("div",{style:{fontSize:"20px",fontWeight:700,color:"var(--red)",fontFamily:"var(--mono)",marginBottom:"8px"}},"NO TRADE TODAY"));
+    let reason="";
+    if(!fr.allPass)reason+="One or more pre-trade filters failed. ";
+    if(!pr.allPass)reason+="Portfolio risk limits exceeded. ";
+    if(trade&&trade.effectiveCredit<0.50)reason+="Credit below $0.50 minimum. ";
+    reason+="Review filters above. Cash is a position.";
+    nt.appendChild(h("div",{style:{color:"var(--text-muted)",fontSize:"13px",maxWidth:"500px",margin:"0 auto"}},reason));
+    app.appendChild(nt);
+  }
+
+  // ─── Execution Checklist ────
+  const ec=h("div",{class:"section",style:{fontFamily:"var(--mono)",fontSize:"12px",color:"var(--text-muted)"}});
+  ec.appendChild(sectionHeader("⏰","Execution Checklist"));
+  const ecl=h("div",{style:{lineHeight:"2"}});
+  ecl.innerHTML=
+    `<div>1. Market opens at <span style="color:var(--blue)">6:30 AM PST</span>. Wait for settle.</div>`+
+    `<div>2. Enter between <span style="color:var(--yellow)">7:15 – 7:30 AM PST</span> (10:15–10:30 ET)</div>`+
+    `<div>3. Verify live bid/ask — use <span style="color:var(--blue)">limit order at mid-price</span>, walk $0.05 every 30s</div>`+
+    `<div>4. Set alerts: stop <span style="color:var(--red)">$${trade?trade.stopLoss2x:"—"}</span> / profit <span style="color:var(--green)">$${trade?trade.profitTarget80:"—"}</span></div>`+
+    `<div>5. Monitor at <span style="color:var(--yellow)">12:30 PM PST</span> (3:30 PM ET) for time exit</div>`+
+    `<div>6. Market closes <span style="color:var(--blue)">1:00 PM PST</span>. Log result, update journal.</div>`;
+  ec.appendChild(ecl);
+  app.appendChild(ec);
+
+  // ─── Disclaimer ────
+  const disc=h("div",{class:"disclaimer"});
+  disc.innerHTML="SIMULATED DATA — NOT CONNECTED TO LIVE MARKET FEEDS<br>Prices are Black-Scholes theoretical. Verify all values against your broker before executing.<br>This is not financial advice. Past performance does not guarantee future results.";
+  app.appendChild(disc);
+
+  // ─── Input Reference Guide ────
+  const ref=h("div",{class:"section",style:{marginTop:"8px"}});
+  ref.appendChild(sectionHeader("📖","Input Reference Guide — How to Fill In Each Field"));
+  const refBody=h("div",{style:{fontSize:"12px",lineHeight:"1.9",color:"var(--text-dim)",fontFamily:"var(--sans)"}});
+  REF_DATA.forEach(item=>{
+    const card=h("div",{class:"ref-card"});
+    card.innerHTML=`<div class="ref-name">${item.name}</div>`+
+      `<div style="margin-bottom:6px"><span class="ref-label" style="color:var(--blue)">What it is: </span><span style="color:#cbd5e1">${item.what}</span></div>`+
+      `<div style="margin-bottom:6px"><span class="ref-label" style="color:var(--purple)">Where to find it: </span><span style="color:var(--text-dim)">${item.where}</span></div>`+
+      `<div><span class="ref-label" style="color:var(--green)">How to enter: </span><span style="color:var(--text-dim)">${item.how}</span></div>`;
+    refBody.appendChild(card);
+  });
+  // PST Schedule
+  const sched=h("div",{style:{padding:"16px",marginTop:"12px",background:"var(--bg-deepest)",border:"1px solid var(--text-ghost)",borderRadius:"8px"}});
+  sched.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--blue);font-family:var(--mono);margin-bottom:10px">PST DAILY SCHEDULE</div>`+
+    `<div class="schedule-grid">`+
+    `<span style="color:var(--yellow)">~6:00 AM</span><span style="color:var(--text-dim)">Pre-market: fill in dashboard inputs from /ES futures, VIX close, your account</span>`+
+    `<span style="color:var(--yellow)">6:30 AM</span><span style="color:var(--text-dim)">Market opens — do NOT enter yet, let the open settle</span>`+
+    `<span style="color:var(--green)">7:15 – 7:30 AM</span><span style="color:#cbd5e1;font-weight:600">ENTRY WINDOW — Execute trade if dashboard says TRADE</span>`+
+    `<span style="color:var(--yellow)">7:30 AM – 12:30 PM</span><span style="color:var(--text-dim)">Hold position, monitor stop loss and profit target alerts</span>`+
+    `<span style="color:var(--pink)">12:30 PM</span><span style="color:var(--text-dim)">Time exit check — close if SPX within 0.3% of short strike</span>`+
+    `<span style="color:var(--yellow)">1:00 PM</span><span style="color:var(--text-dim)">Market closes — options settle, log result, update journal</span></div>`;
+  refBody.appendChild(sched);
+  ref.appendChild(refBody);
+  app.appendChild(ref);
+}
+
+render();
+</script>
+</body>
+</html>
